@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Hangfire;
+using HostFun.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,6 +23,7 @@ namespace HostFun
                         var connectionString = context.Configuration.GetConnectionString("DefaultConnection");
                         config.UseSqlServerStorage(connectionString);
                     });
+                    services.AddSingleton<IGreeter>(new Greeter());
                     services.AddSingleton<IHostedService, HangfireService>();
                 })
                 .ConfigureLogging(logging => {
