@@ -31,6 +31,7 @@ namespace HostFun.Web
             }
 
             app.UseHangfireDashboard();
+
             app.Run(async context => {
                 context.Response.Redirect("/hangfire");
             });

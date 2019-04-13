@@ -276,3 +276,6 @@ docs/includes/
 
 # Awesome Typescript Loader
 .awcache/
+
+# VS Code
+.vscode/

@@ -1,6 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Hangfire;
+using Hangfire.SqlServer;
 using HostFun.Common;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,7 +15,7 @@ namespace HostFun
     {
         public static async Task Main(string[] args)
         {
-            await new HostBuilder()
+            var host = new HostBuilder()
                 .ConfigureAppConfiguration(config => {
                     config.AddJsonFile("appsettings.json");
                 })
@@ -21,7 +24,14 @@ namespace HostFun
                     //services.AddSingleton<IHostedService, NotificationService>();
                     services.AddHangfire(config => {
                         var connectionString = context.Configuration.GetConnectionString("DefaultConnection");
-                        config.UseSqlServerStorage(connectionString);
+                        config.UseSqlServerStorage(connectionString, new SqlServerStorageOptions {
+                            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+                            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+                            QueuePollInterval = TimeSpan.Zero,
+                            UseRecommendedIsolationLevel = true,
+                            UsePageLocksOnDequeue = true,
+                            DisableGlobalLocks = true
+                        });
                     });
                     services.AddSingleton<IGreeter>(new Greeter());
                     services.AddSingleton<IHostedService, HangfireService>();
@@ -29,7 +39,21 @@ namespace HostFun
                 .ConfigureLogging(logging => {
                     logging.AddConsole();
                 })
-                .RunConsoleAsync();
+                .UseConsoleLifetime()
+                .Build()
+                ;
+
+            {
+                var connectionString = host.Services.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
+                var dbOptions = new DbContextOptionsBuilder()
+                    .UseSqlServer(connectionString)
+                    .Options;
+                using (var dbContext = new DbContext(dbOptions)) {
+                    await dbContext.Database.EnsureCreatedAsync();
+                }
+            }
+
+            await host.RunAsync();
         }
     }
 }
